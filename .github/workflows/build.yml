@@ -30,8 +30,14 @@ jobs:
     - name: Install Pillow
       run: pip install pillow
 
+    # A version tag such as v0.4.0 sets the pack version; other builds use the default in tools/generate.py.
     - name: Generate the pack
-      run: python3 tools/generate.py
+      run: |
+        if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          python3 tools/generate.py --version "${GITHUB_REF_NAME#v}"
+        else
+          python3 tools/generate.py
+        fi
 
     # Hytale can't run here, so this checks references instead of loading the pack.
     - name: Check the pack
@@ -40,10 +46,6 @@ jobs:
     - name: Zip the pack
       run: |
         version=$(python3 -c "import json; print(json.load(open('pack/MoreDyes/manifest.json'))['Version'])")
-        if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$version" ]]; then
-          echo "::error::Tag $GITHUB_REF_NAME does not match the manifest version $version (set in tools/generate.py). Tag it v$version instead."
-          exit 1
-        fi
         mkdir -p dist
         (cd pack && zip -qr "../dist/MoreDyes-$version.zip" MoreDyes)
         ls -l dist
@@ -90,9 +92,14 @@ jobs:
     - name: Publish the release for this version
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
-        gh release create "$GITHUB_REF_NAME" dist/*.zip \
-          --title "More Dyes $GITHUB_REF_NAME" \
-          --generate-notes
+        # A release drafted on GitHub for this tag already exists; attach the zip to it instead.
+        if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+          gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber
+        else
+          gh release create "$GITHUB_REF_NAME" dist/*.zip \
+            --title "More Dyes $GITHUB_REF_NAME" \
+            --generate-notes
+        fi
 
     # Hytale projects aren't supported by mc-publish, so this calls CurseForge's upload API directly.
     # Hytale uploads go through legacy.curseforge.com with game version 14284.

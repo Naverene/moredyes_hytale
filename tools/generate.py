@@ -7,6 +7,7 @@ the 1.16.5 mod. Logs only tint their end rings; the bark stays vanilla oak.
 
     python3 tools/generate.py               # all 118 colors
     python3 tools/generate.py --prototype   # just three, for quick tests
+    python3 tools/generate.py --version 0.4.0   # set the manifest version (CI uses the tag)
 
 Needs Pillow (pip install pillow). Output goes to pack/MoreDyes/.
 """
@@ -260,6 +261,8 @@ def wool(bid, color):
 
 def main():
     colors = PROTOTYPE_COLORS if "--prototype" in sys.argv else COLORS
+    if "--version" in sys.argv:
+        MANIFEST["Version"] = sys.argv[sys.argv.index("--version") + 1]
     if PACK.exists():
         shutil.rmtree(PACK)
     textures = PACK / "Common" / "BlockTextures"
