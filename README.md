@@ -2,28 +2,37 @@
 
 A Hytale port of More Dyes, starting as an asset pack (no Java plugin yet).
 
-Status: **prototype.** The pack adds three dyed stone blocks (E57F6C, 4D73C5 and B2D926). It checks that one grey texture plus the BlockType `Tint` field gives correctly colored blocks, which is how all 118 colors would be made.
+Status: **118 colors each of dyed stone, logs, planks and wool** (472 blocks). Each block type shares one grey texture and gets its color from the BlockType `Tint` fields. Logs only tint their end rings and keep vanilla oak bark on the sides, like the Minecraft versions. Icons are 3D cubes rendered by the generator.
+
+Tinted stone was tested in game on 2026-10-03. Logs, planks and wool inherit from Hytale's own oak log, softwood planks and white cloth definitions.
 
 ## Trying it
 
-1. Copy the `pack/MoreDyes` folder into Hytale's `UserData/Mods` folder.
+1. Download `MoreDyes-<version>.zip` from [Releases](https://github.com/Naverene/moredyes_hytale/releases) ("Development build" is the latest `main`), and unzip it into Hytale's `UserData/Mods` folder so you get `Mods/MoreDyes/manifest.json`.
    - Windows: `%APPDATA%\Hytale\UserData\Mods\MoreDyes`
-   - Some older guides say `UserData/Packs`. Use that if `Mods` doesn't exist.
+   - Linux (Flatpak): `~/.var/app/com.hypixel.HytaleLauncher/data/Hytale/UserData/Mods/MoreDyes`
 2. Start Hytale, open **Worlds**, right-click a creative world and turn on **MoreDyes**.
-3. Join the world and search the creative inventory for "Stone", or use the block IDs `MoreDyes_Stone_E57F6C`, `MoreDyes_Stone_4D73C5` and `MoreDyes_Stone_B2D926`.
+3. Join the world and search the creative inventory for a color's hex (e.g. `E57F6C`), or look in the Rocks and Plants categories. Block IDs are `MoreDyes_<Stone|Log|Planks|Wool>_<HEX>`.
 
-**What to check:**
-- The placed blocks show the same three colors as their inventory icons (orange-red, blue, lime).
-- Breaking a block drops that same block.
+Dyed planks are crafted from their dyed log at the Builder's bench. Everything else is creative-only until dye items exist.
 
-If the placed blocks show up grey while the icons are colored, `Tint` isn't being applied. If the pack fails to load, the log names the field it rejected.
+## Building
 
-## Regenerating
+CI builds the pack on every push and pull request, checks it with `tools/check_pack.py`, and attaches the zip to the run. Pushes to `main` update the Development build release, and pushing a tag like `v0.3.0` publishes a release and uploads it to [CurseForge](https://www.curseforge.com/hytale) project 1725010 (the tag must match the version in `tools/generate.py`, and the repo needs the `CURSEFORGE_TOKEN` secret).
+
+The pack isn't committed; build it locally with:
 
 ```
 pip install pillow
-python3 tools/generate.py          # the three prototype colors
-python3 tools/generate.py --all    # all 118 colors
+python3 tools/generate.py               # all 118 colors
+python3 tools/generate.py --prototype   # just three, for quick tests
+python3 tools/check_pack.py             # check references
 ```
 
+That writes `pack/MoreDyes`, which you can copy straight into `UserData/Mods`.
+
 `tools/colors.json` holds the 118 colors, taken from `ColorStrings.ALL` in [moredyes_1165](https://github.com/Naverene/moredyes_1165).
+
+## License
+
+MIT, see [LICENSE](LICENSE). Hytale's own assets that the pack refers to, such as the oak bark texture, belong to Hypixel Studios and aren't included.
