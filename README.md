@@ -18,7 +18,7 @@ Dyed planks are crafted from their dyed log at the Builder's bench. Everything e
 
 ## Building
 
-CI builds the pack on every push and pull request, checks it with `tools/check_pack.py`, and attaches the zip to the run. Pushes to `main` update the Development build release, and pushing a tag like `v0.3.0` publishes a release (the tag must match the version in `tools/generate.py`).
+CI builds the pack on every push and pull request, checks it with `tools/check_pack.py`, and attaches the zip to the run. Pushes to `main` update the Development build release, and pushing a tag like `v0.3.0` publishes a release and uploads it to [CurseForge](https://www.curseforge.com/hytale) project 1725010 (the tag must match the version in `tools/generate.py`, and the repo needs the `CURSEFORGE_TOKEN` secret).
 
 The pack isn't committed; build it locally with:
 
@@ -32,3 +32,7 @@ python3 tools/check_pack.py             # check references
 That writes `pack/MoreDyes`, which you can copy straight into `UserData/Mods`.
 
 `tools/colors.json` holds the 118 colors, taken from `ColorStrings.ALL` in [moredyes_1165](https://github.com/Naverene/moredyes_1165).
+
+## License
+
+MIT, see [LICENSE](LICENSE). Hytale's own assets that the pack refers to, such as the oak bark texture, belong to Hypixel Studios and aren't included.

@@ -93,3 +93,26 @@ jobs:
         gh release create "$GITHUB_REF_NAME" dist/*.zip \
           --title "More Dyes $GITHUB_REF_NAME" \
           --generate-notes
+
+    # Hytale projects aren't supported by mc-publish, so this calls CurseForge's upload API directly.
+    # Hytale uploads go through legacy.curseforge.com with game version 14284.
+    - name: Upload the release to CurseForge
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+        CURSEFORGE_PROJECT_ID: '1725010'
+      run: |
+        if [ -z "$CURSEFORGE_TOKEN" ]; then
+          echo "::warning::CURSEFORGE_TOKEN is not set, so the release was not uploaded to CurseForge."
+          exit 0
+        fi
+        file=$(ls dist/*.zip)
+        metadata=$(jq -n \
+          --arg name "More Dyes $GITHUB_REF_NAME" \
+          --arg notes "See https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" \
+          '{displayName: $name, changelog: $notes, changelogType: "text", releaseType: "release", gameVersions: [14284]}')
+        curl -sS --fail-with-body \
+          -H "X-Api-Token: $CURSEFORGE_TOKEN" \
+          -F "metadata=$metadata" \
+          -F "file=@$file" \
+          "https://legacy.curseforge.com/api/projects/$CURSEFORGE_PROJECT_ID/upload-file"
