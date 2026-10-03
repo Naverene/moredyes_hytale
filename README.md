@@ -18,7 +18,7 @@ Dyed planks are crafted from their dyed log at the Builder's bench. Everything e
 
 ## Building
 
-CI builds the pack on every push and pull request, checks it with `tools/check_pack.py`, and attaches the zip to the run. Pushes to `main` update the Development build release, and pushing a tag like `v0.3.0` publishes a release and uploads it to [CurseForge](https://www.curseforge.com/hytale) project 1725010 (the tag must match the version in `tools/generate.py`, and the repo needs the `CURSEFORGE_TOKEN` secret).
+CI builds the pack on every push and pull request, checks it with `tools/check_pack.py`, and attaches the zip to the run. Pushes to `main` update the Development build release, and pushing a tag like `v0.3.0` publishes a release and uploads it to [CurseForge](https://www.curseforge.com/hytale) project 1725010 (the tag sets the pack version, and the repo needs the `CURSEFORGE_TOKEN` secret). A release drafted on GitHub for the tag works too; CI attaches the zip to it.
 
 The pack isn't committed; build it locally with:
 
