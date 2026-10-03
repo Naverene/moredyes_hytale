@@ -32,7 +32,7 @@ MANIFEST = {
     "Name": "MoreDyes",
     "Version": "0.3.0",
     "Description": "118 extra dye colors: dyed stone, logs, planks and wool.",
-    "Authors": [{"Name": "Naverene"}],
+    "Authors": [{"Name": "Naverene"}, {"Name": "kg6jay"}],
     "Website": "https://github.com/Naverene/moredyes_hytale",
     "ServerVersion": "*",
     "Dependencies": {},
