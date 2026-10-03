@@ -1,0 +1,41 @@
+{
+  "TranslationProperties": {
+    "Name": "server.MoreDyes_Wool_D9A6EC.name"
+  },
+  "Icon": "Icons/ItemsGenerated/MoreDyes_Wool_D9A6EC.png",
+  "ItemLevel": 2,
+  "Categories": [
+    "Blocks.Rocks"
+  ],
+  "PlayerAnimationsId": "Block",
+  "BlockType": {
+    "Material": "Solid",
+    "DrawType": "Cube",
+    "Group": "Cloth",
+    "Flags": {},
+    "Gathering": {
+      "Breaking": {
+        "GatherType": "SoftBlocks",
+        "ItemId": "MoreDyes_Wool_D9A6EC"
+      }
+    },
+    "BlockParticleSetId": "Dust",
+    "Textures": [
+      {
+        "All": "BlockTextures/MoreDyes_Wool.png",
+        "Weight": 1
+      }
+    ],
+    "Tint": [
+      "#d9a6ec"
+    ],
+    "BlockSoundSetId": "Cloth",
+    "ParticleColor": "#d9a6ec"
+  },
+  "Tags": {
+    "Type": [
+      "Cloth"
+    ]
+  },
+  "ItemSoundSetId": "ISS_Items_Cloth"
+}

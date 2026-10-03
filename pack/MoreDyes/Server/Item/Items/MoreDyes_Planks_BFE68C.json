@@ -1,0 +1,43 @@
+{
+  "TranslationProperties": {
+    "Name": "server.MoreDyes_Planks_BFE68C.name"
+  },
+  "Parent": "Wood_Softwood_Planks",
+  "Icon": "Icons/ItemsGenerated/MoreDyes_Planks_BFE68C.png",
+  "Recipe": {
+    "Input": [
+      {
+        "ItemId": "MoreDyes_Log_BFE68C",
+        "Quantity": 1
+      }
+    ],
+    "BenchRequirement": [
+      {
+        "Id": "Builders",
+        "Type": "StructuralCrafting",
+        "Categories": [
+          "WoodPlanks"
+        ]
+      }
+    ],
+    "OutputQuantity": 1
+  },
+  "BlockType": {
+    "Textures": [
+      {
+        "All": "BlockTextures/MoreDyes_Planks.png",
+        "Weight": 1
+      }
+    ],
+    "Tint": [
+      "#bfe68c"
+    ],
+    "Gathering": {
+      "Breaking": {
+        "GatherType": "Woods",
+        "ItemId": "MoreDyes_Planks_BFE68C"
+      }
+    },
+    "ParticleColor": "#bfe68c"
+  }
+}

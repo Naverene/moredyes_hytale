@@ -1,0 +1,32 @@
+{
+  "TranslationProperties": {
+    "Name": "server.MoreDyes_Log_9F7F33.name"
+  },
+  "Parent": "Wood_Oak_Trunk",
+  "Icon": "Icons/ItemsGenerated/MoreDyes_Log_9F7F33.png",
+  "BlockType": {
+    "Textures": [
+      {
+        "Sides": "BlockTextures/Wood_Trunk_Oak_Side.png",
+        "UpDown": "BlockTextures/MoreDyes_Log_Top.png",
+        "Weight": 1
+      }
+    ],
+    "TintUp": [
+      "#9f7f33"
+    ],
+    "TintDown": [
+      "#9f7f33"
+    ],
+    "Gathering": {
+      "Breaking": {
+        "ItemId": "MoreDyes_Log_9F7F33",
+        "GatherType": "Woods"
+      },
+      "Physics": {
+        "ItemId": "MoreDyes_Log_9F7F33"
+      }
+    },
+    "ParticleColor": "#9f7f33"
+  }
+}

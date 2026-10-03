@@ -1,8 +1,8 @@
 {
   "Group": "Naverene",
   "Name": "MoreDyes",
-  "Version": "0.2.0",
-  "Description": "118 extra dye colors, starting with dyed stone.",
+  "Version": "0.3.0",
+  "Description": "118 extra dye colors: dyed stone, logs, planks and wool.",
   "Authors": [
     {
       "Name": "Naverene"
