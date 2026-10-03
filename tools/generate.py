@@ -4,8 +4,8 @@
 Every dyed block shares one light grey texture and gets its color from the
 BlockType "Tint" field, the same idea as the tinted blocks in the 1.16.5 mod.
 
-    python3 tools/generate.py           # the three prototype colors
-    python3 tools/generate.py --all     # all 118 colors
+    python3 tools/generate.py               # all 118 colors
+    python3 tools/generate.py --prototype   # just three, for quick tests
 
 Needs Pillow (pip install pillow). Output goes to pack/MoreDyes/.
 """
@@ -26,8 +26,8 @@ SIZE = 32
 MANIFEST = {
     "Group": "Naverene",
     "Name": "MoreDyes",
-    "Version": "0.1.0",
-    "Description": "118 extra dye colors. Prototype: tinted stone.",
+    "Version": "0.2.0",
+    "Description": "118 extra dye colors, starting with dyed stone.",
     "Authors": [{"Name": "Naverene"}],
     "Website": "https://github.com/Naverene/moredyes_hytale",
     "ServerVersion": "*",
@@ -92,7 +92,7 @@ def item(color):
 
 
 def main():
-    colors = COLORS if "--all" in sys.argv else PROTOTYPE_COLORS
+    colors = PROTOTYPE_COLORS if "--prototype" in sys.argv else COLORS
     if PACK.exists():
         shutil.rmtree(PACK)
     textures = PACK / "Common" / "BlockTextures"

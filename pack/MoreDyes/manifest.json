@@ -1,8 +1,8 @@
 {
   "Group": "Naverene",
   "Name": "MoreDyes",
-  "Version": "0.1.0",
-  "Description": "118 extra dye colors. Prototype: tinted stone.",
+  "Version": "0.2.0",
+  "Description": "118 extra dye colors, starting with dyed stone.",
   "Authors": [
     {
       "Name": "Naverene"
