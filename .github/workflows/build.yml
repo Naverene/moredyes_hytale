@@ -20,10 +20,10 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.12'
 
@@ -41,7 +41,7 @@ jobs:
       run: |
         version=$(python3 -c "import json; print(json.load(open('pack/MoreDyes/manifest.json'))['Version'])")
         if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$version" ]]; then
-          echo "Tag $GITHUB_REF_NAME does not match the manifest version $version (set in tools/generate.py)"
+          echo "::error::Tag $GITHUB_REF_NAME does not match the manifest version $version (set in tools/generate.py). Tag it v$version instead."
           exit 1
         fi
         mkdir -p dist
@@ -49,7 +49,7 @@ jobs:
         ls -l dist
 
     - name: Upload the pack zip
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: MoreDyes
         path: dist/*.zip
@@ -71,7 +71,7 @@ jobs:
 
     steps:
     - name: Download the pack zip
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: MoreDyes
         path: dist
