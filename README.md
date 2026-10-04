@@ -8,7 +8,7 @@ Tinted stone was tested in game on 2026-10-03. Logs, planks and wool inherit fro
 
 ## Trying it
 
-1. Download `MoreDyes-<version>.zip` from [Releases](https://github.com/Naverene/moredyes_hytale/releases) ("Development build" is the latest `main`), and unzip it into Hytale's `UserData/Mods` folder so you get `Mods/MoreDyes/manifest.json`.
+1. Download `MoreDyes-<version>.zip` from [Releases](https://github.com/Naverene/moredyes_hytale/releases) ("Development build" is the latest `main`), and unzip it into a new `MoreDyes` folder inside Hytale's `UserData/Mods` folder, so you get `Mods/MoreDyes/manifest.json`.
    - Windows: `%APPDATA%\Hytale\UserData\Mods\MoreDyes`
    - Linux (Flatpak): `~/.var/app/com.hypixel.HytaleLauncher/data/Hytale/UserData/Mods/MoreDyes`
 2. Start Hytale, open **Worlds**, right-click a creative world and turn on **MoreDyes**.
