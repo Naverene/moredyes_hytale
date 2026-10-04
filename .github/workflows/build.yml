@@ -43,11 +43,13 @@ jobs:
     - name: Check the pack
       run: python3 tools/check_pack.py
 
+    # CurseForge needs manifest.json at the top of the zip, not inside a MoreDyes folder.
     - name: Zip the pack
       run: |
         version=$(python3 -c "import json; print(json.load(open('pack/MoreDyes/manifest.json'))['Version'])")
         mkdir -p dist
-        (cd pack && zip -qr "../dist/MoreDyes-$version.zip" MoreDyes)
+        (cd pack/MoreDyes && zip -qr "../../dist/MoreDyes-$version.zip" .)
+        unzip -l dist/*.zip | grep -q " manifest.json$"
         ls -l dist
 
     - name: Upload the pack zip
