@@ -40,6 +40,7 @@ The pack isn't committed; build it locally with:
 pip install pillow
 python3 tools/generate.py               # all 118 colors
 python3 tools/generate.py --prototype   # just three, for quick tests
+python3 tools/generate.py --drawers     # test build that adds dyed Wan's Storage Drawers
 python3 tools/check_pack.py             # check references
 ```
 

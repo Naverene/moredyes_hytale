@@ -22,6 +22,7 @@ VANILLA_ITEMS = {
     "Soil_Clay_Smooth_White", "Rock_Crystal_White_Block", "Cloth_Block_Wool_White",
     "Furniture_Crude_Candle", "Ingredient_Bar_Iron", "Plant_Petals_White", "Rock_Stone_Brick_Stairs",
     "Rock_Stone_Brick_Wall",
+    "Storage_Drawer_Softwood",  # Wan's Storage Drawers, only in --drawers builds
 } | {"Plant_Petals_" + c for c in (
     "Azure", "Black", "Blood", "Blue", "Cyan", "Green", "Orange", "Pink", "Purple", "Red", "Storm", "Yellow")}
 VANILLA_TEXTURES = {

@@ -10,6 +10,7 @@ instead of a tint.
     python3 tools/generate.py               # all 118 colors
     python3 tools/generate.py --prototype   # just three, for quick tests
     python3 tools/generate.py --version 0.4.0   # set the manifest version (CI uses the tag)
+    python3 tools/generate.py --drawers     # also dyed Wan's Storage Drawers (test build)
 
 Needs Pillow (pip install pillow). Output goes to pack/MoreDyes/.
 """
@@ -645,6 +646,51 @@ def kinds():
     ]
 
 
+def drawer_side(planks):
+    """The drawer front for icons: dyed planks with a darker inset panel and a handle."""
+    out = planks.copy()
+    px = out.load()
+    for y in range(4, SIZE - 4):
+        for x in range(4, SIZE - 4):
+            r, g, b, a = px[x, y]
+            f = 0.55 if x in (4, SIZE - 5) or y in (4, SIZE - 5) else 0.8
+            if 13 <= x <= 18 and 9 <= y <= 11:
+                f = 0.4
+            px[x, y] = (int(r * f), int(g * f), int(b * f), a)
+    return out
+
+
+def drawer(bid, color, texture):
+    """A dyed drawer for Wan's Storage Drawers: its drawer model and logic, our dyed planks."""
+    return {
+        "TranslationProperties": name_of(bid),
+        "PlayerAnimationsId": "Block",
+        "Categories": ["Furniture.Furniture"],
+        "Icon": icon_of(bid),
+        "Recipe": {
+            "Input": [{"ItemId": "Storage_Drawer_Softwood", "Quantity": 8},
+                      {"ItemId": "MoreDyes_Dye_" + color.upper(), "Quantity": 1}],
+            "OutputQuantity": 8,
+            "BenchRequirement": WORKBENCH,
+        },
+        "BlockType": {
+            "BlockEntity": {"Components": {"container": {"Capacity": 1}, "StorageDrawers:DrawerComponent": {}}},
+            "Supporting": {side: [{"FaceType": "Full"}] for side in ("Up", "Down", "North", "South", "East", "West")},
+            "BlockSoundSetId": "Wood",
+            "CustomModel": "Blocks/Drawers/Models/Storage_Drawer.blockymodel",
+            "CustomModelTexture": [{"Texture": texture, "Weight": 0}],
+            "DrawType": "Model",
+            "Interactions": {"Primary": "DrawerInteraction", "Use": "DrawerInteraction"},
+            "Material": "Solid",
+            "Opacity": "Semitransparent",
+            "CustomModelScale": 1.0,
+            "VariantRotation": "NESW",
+            "ParticleColor": "#" + color,
+            "Gathering": {"Soft": {"IsWeaponBreakable": False}, "UseDefaultDropWhenPlaced": False},
+        },
+    }
+
+
 def main():
     colors = PROTOTYPE_COLORS if "--prototype" in sys.argv else COLORS
     if "--version" in sys.argv:
@@ -733,6 +779,18 @@ def main():
         recipe = dyeing("Wood_Oak_Trunk", "MoreDyes_Dye_" + color.upper(), WORKBENCH)
         write(bid, log(bid, color, recipe), shape_icon("cube", tinted(log_tex, color), bark),
               color.upper() + " Log")
+
+    if "--drawers" in sys.argv:
+        # Needs Wan's Storage Drawers; this build checks whether Hytale loads them without it.
+        MANIFEST["OptionalDependencies"] = {"WanMine:StorageDrawers": "*"}
+        (PACK / "manifest.json").write_text(json.dumps(MANIFEST, indent=2) + "\n")
+        planks_tex = planks_texture()
+        for color in colors:
+            hexid = color.upper()
+            bid = "MoreDyes_Drawer_" + hexid
+            colored_tex = tinted(planks_tex, color)
+            write(bid, drawer(bid, color, "BlockTextures/MoreDyes/Planks_" + hexid + ".png"),
+                  shape_icon("cube", colored_tex, drawer_side(colored_tex)), hexid + " Storage Drawer")
 
     (lang / "server.lang").write_text("\n".join(lines) + "\n")
     print("Wrote %d items to %s" % (len(lines), PACK.relative_to(ROOT)))
