@@ -3,7 +3,9 @@
 
 Every dyed block shares one light grey texture per block type and gets its
 color from the BlockType "Tint" fields, the same idea as the tinted blocks in
-the 1.16.5 mod. Logs only tint their end rings; the bark stays vanilla oak.
+the Minecraft versions. Logs only tint their end rings; the bark stays vanilla
+oak. Half slabs draw a 3D model, so they get one pre-colored texture per color
+instead of a tint.
 
     python3 tools/generate.py               # all 118 colors
     python3 tools/generate.py --prototype   # just three, for quick tests
@@ -22,7 +24,9 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "pack" / "MoreDyes"
+BASE = ROOT / "tools" / "base"
 COLORS = json.loads((ROOT / "tools" / "colors.json").read_text())
+DYE_RECIPES = json.loads((ROOT / "tools" / "dye_recipes.json").read_text())
 PROTOTYPE_COLORS = ["e57f6c", "4d73c5", "b2d926"]
 SIZE = 32
 ICON = 64
@@ -30,8 +34,9 @@ ICON = 64
 MANIFEST = {
     "Group": "Naverene",
     "Name": "MoreDyes",
-    "Version": "0.3.0",
-    "Description": "118 extra dye colors: dyed stone, logs, planks and wool.",
+    "Version": "0.4.0",
+    "Description": "118 extra dye colors: dyes, dyed stone, bricks, wood, wool, sand, granite, "
+                   "slabs and lamps with colored light.",
     "Authors": [{"Name": "Naverene"}, {"Name": "kg6jay"}],
     "Website": "https://github.com/Naverene/moredyes_hytale",
     "ServerVersion": "*",
@@ -42,6 +47,28 @@ MANIFEST = {
 
 # Vanilla texture used for the untinted log sides.
 OAK_BARK = "BlockTextures/Wood_Trunk_Oak_Side.png"
+# Light vanilla textures for the shapes that use Hytale's own models. These get
+# the dye color from Tint, which still needs checking in game for models.
+STAIRS_TEXTURE = "Blocks/Structures/Stairs/Stairs_Textures/Rock_Chalk_Brick_Stairs.png"
+WALL_TEXTURE = "Blocks/Structures/Walls/Wall_Rock_Brick_Marble.png"
+PETAL_TEXTURE = "Resources/Plants/Petal_Textures/White.png"
+
+# Minecraft dyes in the More Dyes mixing recipes, as Hytale petals.
+PETALS = {
+    "white": ["White"], "orange": ["Orange"], "magenta": ["Pink", "Purple"],
+    "light_blue": ["Azure"], "yellow": ["Yellow"], "lime": ["Green", "Yellow"],
+    "pink": ["Pink"], "gray": ["Black", "White"], "light_gray": ["Black", "White", "White"],
+    "cyan": ["Cyan"], "purple": ["Purple"], "blue": ["Blue"], "brown": ["Orange", "Black"],
+    "green": ["Green"], "red": ["Red"], "black": ["Black"],
+}
+
+WORKBENCH = [{"Id": "Workbench", "Type": "Crafting", "Categories": ["Workbench_Crafting"]}]
+TEXTILES = [{"Id": "Furniture_Bench", "Type": "Crafting", "Categories": ["Furniture_Textiles"]}]
+LIGHTING = [{"Id": "Furniture_Bench", "Type": "Crafting", "Categories": ["Furniture_Lighting"]}]
+
+
+def builders(category):
+    return [{"Id": "Builders", "Type": "StructuralCrafting", "Categories": [category]}]
 
 
 # --- Textures -------------------------------------------------------------
@@ -61,6 +88,139 @@ def stone_texture():
         v = rng.randint(212, 244)
         return v - 28 if x in (0, SIZE - 1) or y in (0, SIZE - 1) else v
     return gray(px, 1165)
+
+
+def cobble_texture():
+    """Rounded stones with dark gaps, from the nearest of a few random centres."""
+    rng = random.Random(77)
+    seeds = [(rng.uniform(0, SIZE), rng.uniform(0, SIZE), rng.randint(200, 240)) for _ in range(14)]
+
+    def px(x, y, r):
+        dists = []
+        for sx, sy, v in seeds:
+            dx = min(abs(x - sx), SIZE - abs(x - sx))
+            dy = min(abs(y - sy), SIZE - abs(y - sy))
+            dists.append((math.hypot(dx, dy), v))
+        dists.sort()
+        (d1, v), (d2, _) = dists[0], dists[1]
+        if d2 - d1 < 1.3:
+            return 150 + r.uniform(-8, 8)
+        return v - d1 * 1.5 + r.uniform(-6, 6)
+    return gray(px, 78)
+
+
+def brick_texture():
+    """Four rows of bricks with mortar lines, every other row offset."""
+    def px(x, y, rng):
+        row, ry = divmod(y, 8)
+        bx = (x + (8 if row % 2 else 0)) % 16
+        if ry == 7 or bx == 15:
+            return 168
+        edge = 10 if ry == 0 or bx == 0 else 0
+        return 230 + edge - (8 if ry == 6 or bx == 14 else 0) + rng.uniform(-6, 6)
+    return gray(px, 91)
+
+
+def smooth_texture():
+    def px(x, y, rng):
+        if x in (0, SIZE - 1) or y in (0, SIZE - 1):
+            return 196
+        return 232 + rng.uniform(-3, 3)
+    return gray(px, 92)
+
+
+def marble_texture():
+    """Pale stone with a few soft darker veins."""
+    rng = random.Random(93)
+    veins = [(rng.uniform(0, 6.28), rng.uniform(0.15, 0.35), rng.uniform(0, SIZE)) for _ in range(3)]
+
+    def px(x, y, r):
+        v = 240 + r.uniform(-4, 4)
+        for phase, freq, off in veins:
+            line = off + 6 * math.sin(x * freq + phase)
+            d = abs((y - line + SIZE / 2) % SIZE - SIZE / 2)
+            if d < 1.2:
+                v -= 26
+            elif d < 2.2:
+                v -= 10
+        return v
+    return gray(px, 94)
+
+
+def sandstone_texture():
+    """Horizontal layers, with a cap band at the top."""
+    bands = [random.Random(95 + i).uniform(-8, 8) for i in range(SIZE)]
+
+    def px(x, y, rng):
+        if y < 3:
+            return 238 + rng.uniform(-3, 3)
+        if y == 3:
+            return 200
+        return 226 + bands[y // 3] + rng.uniform(-4, 4)
+    return gray(px, 96)
+
+
+def sand_texture():
+    def px(x, y, rng):
+        return 232 + rng.choice((-14, -6, 0, 0, 0, 4, 8)) + rng.uniform(-3, 3)
+    return gray(px, 97)
+
+
+def gravel_texture():
+    """Small pebbles of different shades."""
+    rng = random.Random(98)
+    pebbles = [(rng.uniform(0, SIZE), rng.uniform(0, SIZE), rng.uniform(1.8, 3.6), rng.randint(170, 240))
+               for _ in range(60)]
+
+    def px(x, y, r):
+        v = 150
+        for sx, sy, rad, shade in pebbles:
+            if math.hypot(x - sx, y - sy) < rad:
+                v = shade
+        return v + r.uniform(-6, 6)
+    return gray(px, 99)
+
+
+def clay_texture():
+    """Smooth clay, the Hytale stand-in for terracotta: flat with faint speckles."""
+    def px(x, y, rng):
+        return 224 + (-14 if rng.random() < 0.05 else 0) + rng.uniform(-3, 3)
+    return gray(px, 100)
+
+
+def crystal_texture():
+    """Faceted crystal, bright with darker facet lines."""
+    def px(x, y, rng):
+        d = (x + y) % 16
+        e = (x - y) % 16
+        v = 236 + rng.uniform(-4, 4)
+        if d in (0, 1) or e in (0, 1):
+            v -= 34
+        if x in (0, SIZE - 1) or y in (0, SIZE - 1):
+            v -= 20
+        return v
+    return gray(px, 101)
+
+
+def lamp_texture(lit):
+    """A frame around four glowing panes; the unlit one is dark."""
+    def px(x, y, rng):
+        frame = x in (0, 1, SIZE - 2, SIZE - 1) or y in (0, 1, SIZE - 2, SIZE - 1) or x in (15, 16) or y in (15, 16)
+        if frame:
+            return (150 if lit else 60) + rng.uniform(-6, 6)
+        cx, cy = x % 16 - 7.5, y % 16 - 7.5
+        glow = 255 - 2.0 * math.hypot(cx, cy)
+        return (glow if lit else glow * 0.32) + rng.uniform(-3, 3)
+    return gray(px, 102 if lit else 103)
+
+
+def solid_lamp_texture(lit):
+    """One color on every side, like Project Red lamps."""
+    def px(x, y, rng):
+        edge = x in (0, SIZE - 1) or y in (0, SIZE - 1)
+        v = (232 if edge else 252) if lit else (66 if edge else 78)
+        return v + rng.uniform(-2, 2)
+    return gray(px, 104)
 
 
 def planks_texture():
@@ -98,6 +258,12 @@ def wool_texture():
     return gray(px, 44)
 
 
+def base_texture(name):
+    """A grey texture from tools/base, scaled up to the pack's texture size."""
+    img = Image.open(BASE / name).convert("RGBA")
+    return img.resize((SIZE, SIZE), Image.NEAREST)
+
+
 def bark_preview_texture():
     """Brown stand-in for vanilla oak bark, only used to draw log icons."""
     rng = random.Random(55)
@@ -119,6 +285,13 @@ def tinted(img, color):
             v, _, _, a = px[x, y]
             px[x, y] = (v * r // 255, v * g // 255, v * b // 255, a)
     return out
+
+
+def light_color(color):
+    """The color a lamp shines: brightened so its strongest channel is full, as #RGB like vanilla lights."""
+    rgb = [int(color[i:i + 2], 16) for i in (0, 2, 4)]
+    top = max(rgb) or 1
+    return "#" + "".join("%x" % round(c * 255 / top / 17) for c in rgb)
 
 
 # --- Icons ----------------------------------------------------------------
@@ -143,56 +316,137 @@ def face(tex, origin, eu, ev):
     return tex.transform((ICON, ICON), Image.AFFINE, (a, b, c, d, e, f), Image.NEAREST)
 
 
-def cube_icon(top, side):
-    """Isometric cube in the same three-quarter view as vanilla block icons."""
-    s = 1.0 / SIZE
-    half, quarter = ICON / 2 - 2, (ICON / 2 - 2) / 2
-    top_pt, left, bottom = (ICON / 2, 2), (2, 2 + quarter), (ICON / 2, 2 + 2 * quarter)
-    right = (ICON - 2, 2 + quarter)
-    down = (0, (ICON - 4 - 2 * quarter) * s)
+HALF = ICON / 2 - 2
+QUARTER = HALF / 2
+HEIGHT = ICON - 4 - 2 * QUARTER
+
+
+def project(x, y, z):
+    """Screen point of a block-space point (x to the front right, z to the front left, y up)."""
+    return (ICON / 2 + (x - z) * HALF, 2 + (x + z) * QUARTER + (1 - y) * HEIGHT)
+
+
+def box_faces(icon, box, top, side):
+    """Draw the three visible faces of an axis-aligned box in the vanilla three-quarter view."""
+    x0, y0, z0, x1, y1, z1 = box
+
+    def crop(tex, u0, v0, u1, v1):
+        part = tex.crop((int(u0 * SIZE), int(v0 * SIZE), max(int(u0 * SIZE) + 1, int(u1 * SIZE)),
+                         max(int(v0 * SIZE) + 1, int(v1 * SIZE))))
+        return part
+
+    def put(tex, origin, end_u, end_v):
+        eu = ((end_u[0] - origin[0]) / tex.width, (end_u[1] - origin[1]) / tex.width)
+        ev = ((end_v[0] - origin[0]) / tex.height, (end_v[1] - origin[1]) / tex.height)
+        icon.alpha_composite(face(tex, origin, eu, ev))
+
+    t = crop(top, x0, z0, x1, z1)
+    put(t, project(x0, y1, z0), project(x1, y1, z0), project(x0, y1, z1))
+    left = crop(shade(side, 0.82), x0, 1 - y1, x1, 1 - y0)
+    put(left, project(x0, y1, z1), project(x1, y1, z1), project(x0, y0, z1))
+    right = crop(shade(side, 0.64), 1 - z1, 1 - y1, 1 - z0, 1 - y0)
+    put(right, project(x1, y1, z1), project(x1, y1, z0), project(x1, y0, z1))
+
+
+SHAPES = {
+    "cube": [(0, 0, 0, 1, 1, 1)],
+    "half": [(0, 0, 0, 1, 0.5, 1)],
+    "stairs": [(0, 0, 0, 1, 0.5, 1), (0, 0.5, 0, 1, 1, 0.5)],
+    "wall": [(0.25, 0, 0, 0.75, 0.8, 1)],
+}
+
+
+def shape_icon(shape, top, side):
     icon = Image.new("RGBA", (ICON, ICON))
-    for layer in (
-        face(top, top_pt, (half * s, quarter * s), (-half * s, quarter * s)),
-        face(shade(side, 0.82), left, (half * s, quarter * s), down),
-        face(shade(side, 0.64), bottom, (half * s, -quarter * s), down),
-    ):
-        icon.alpha_composite(layer)
+    for box in SHAPES[shape]:
+        box_faces(icon, box, top, side)
+    return icon
+
+
+def dye_icon(color):
+    """A small heap of colored powder."""
+    r, g, b = (int(color[i:i + 2], 16) for i in (0, 2, 4))
+    icon = Image.new("RGBA", (ICON, ICON))
+    px = icon.load()
+    rng = random.Random(color)
+    cx, cy = ICON / 2, ICON * 0.62
+    for y in range(ICON):
+        for x in range(ICON):
+            dx, dy = (x - cx) / 26, (y - cy) / 16
+            dome = abs(dx) < 1 and dy < 0 and -dy < 1.5 * (1 - dx * dx)
+            if dx * dx + dy * dy <= 1 or dome:
+                light = 1.15 - 0.35 * (x - cx + (y - cy)) / ICON + rng.uniform(-0.06, 0.06)
+                if dx * dx + dy * dy > 0.86 and dy > 0:
+                    light *= 0.7
+                px[x, y] = (min(255, int(r * light)), min(255, int(g * light)), min(255, int(b * light)), 255)
     return icon
 
 
 # --- Block definitions ----------------------------------------------------
 
-def stone(bid, color):
-    return {
-        "TranslationProperties": {"Name": "server." + bid + ".name"},
-        "MaxStack": 100,
-        "Icon": "Icons/ItemsGenerated/" + bid + ".png",
-        "Categories": ["Blocks.Rocks"],
-        "PlayerAnimationsId": "Block",
-        "Set": "Rock_Stone",
-        "BlockType": {
-            "Material": "Solid",
-            "DrawType": "Cube",
-            "Group": "Stone",
-            "Flags": {},
-            "Gathering": {"Breaking": {"GatherType": "Rocks", "ItemId": bid}},
-            "BlockParticleSetId": "Stone",
-            "Textures": [{"All": "BlockTextures/MoreDyes_Stone.png"}],
-            "Tint": ["#" + color],
-            "ParticleColor": "#" + color,
-            "BlockSoundSetId": "Stone",
-            "BlockBreakingDecalId": "Breaking_Decals_Rock",
-        },
-        "ResourceTypes": [{"Id": "Rock"}],
+def name_of(bid):
+    return {"Name": "server." + bid + ".name"}
+
+
+def icon_of(bid):
+    return "Icons/ItemsGenerated/" + bid + ".png"
+
+
+def cube(bid, color, kind, recipe):
+    """A full block that takes its color from Tint."""
+    block = {
+        "Material": "Solid",
+        "DrawType": "Cube",
+        "Group": kind["group"],
+        "Flags": {},
+        "Gathering": {"Breaking": {"GatherType": kind["gather"], "ItemId": bid}},
+        "BlockParticleSetId": kind["particles"],
+        "Textures": [{"All": kind["texture_path"], "Weight": 1}],
+        "Tint": ["#" + color],
+        "ParticleColor": "#" + color,
+        "BlockSoundSetId": kind["sound"],
     }
+    block.update(kind.get("block", {}))
+    item = {
+        "TranslationProperties": name_of(bid),
+        "MaxStack": 100,
+        "Icon": icon_of(bid),
+        "Categories": [kind["category"]],
+        "PlayerAnimationsId": "Block",
+        "Recipe": recipe,
+        "BlockType": block,
+        "Tags": {"Type": [kind["tag"]]},
+        "ItemSoundSetId": kind["item_sound"],
+    }
+    if "light" in kind:
+        block["Light"] = {"Color": light_color(color)}
+        if kind["light"]:
+            lamp(block, kind)
+    return item
 
 
-def log(bid, color):
+def lamp(block, kind):
+    """Lamps turn off and on when used, and show a dark shade of their color when off."""
+    block["Interactions"] = {"Use": {"Interactions": [
+        {"Type": "ChangeState", "Changes": {"default": "Off", "On": "Off", "Off": "On"}}]}}
+    block["InteractionHint"] = "server.interactionHints.turnoff"
+    block["State"] = {"Definitions": {
+        "On": {},
+        "Off": {
+            "InteractionHint": "server.interactionHints.turnon",
+            "Light": None,
+            "Textures": [{"All": kind["light"], "Weight": 1}],
+        },
+    }}
+
+
+def log(bid, color, recipe):
     # Inherits rotation, sounds, support and stripping from vanilla oak.
     return {
-        "TranslationProperties": {"Name": "server." + bid + ".name"},
+        "TranslationProperties": name_of(bid),
         "Parent": "Wood_Oak_Trunk",
-        "Icon": "Icons/ItemsGenerated/" + bid + ".png",
+        "Icon": icon_of(bid),
+        "Recipe": recipe,
         "BlockType": {
             "Textures": [{
                 "Sides": OAK_BARK,
@@ -210,53 +464,185 @@ def log(bid, color):
     }
 
 
-def planks(bid, color):
+def half(bid, color, kind, texture, recipe):
+    """Half slab drawn with Hytale's half block model; two placed together make a full block."""
     return {
-        "TranslationProperties": {"Name": "server." + bid + ".name"},
-        "Parent": "Wood_Softwood_Planks",
-        "Icon": "Icons/ItemsGenerated/" + bid + ".png",
-        "Recipe": {
-            "Input": [{"ItemId": "MoreDyes_Log_" + color.upper(), "Quantity": 1}],
-            "BenchRequirement": [{
-                "Id": "Builders",
-                "Type": "StructuralCrafting",
-                "Categories": ["WoodPlanks"],
-            }],
-            "OutputQuantity": 1,
-        },
-        "BlockType": {
-            "Textures": [{"All": "BlockTextures/MoreDyes_Planks.png", "Weight": 1}],
-            "Tint": ["#" + color],
-            "Gathering": {"Breaking": {"GatherType": "Woods", "ItemId": bid}},
-            "ParticleColor": "#" + color,
-        },
-    }
-
-
-def wool(bid, color):
-    # Standalone copy of vanilla white cloth: inheriting from it would also
-    # inherit its wool-bolt recipe. No recipe until there are dye items.
-    return {
-        "TranslationProperties": {"Name": "server." + bid + ".name"},
-        "Icon": "Icons/ItemsGenerated/" + bid + ".png",
-        "ItemLevel": 2,
-        "Categories": ["Blocks.Rocks"],
+        "TranslationProperties": name_of(bid),
+        "MaxStack": 100,
+        "Icon": icon_of(bid),
+        "Categories": [kind["category"]],
         "PlayerAnimationsId": "Block",
+        "Interactions": {"Secondary": {
+            "Interactions": [{"Parent": "Half_Block", "Matchers": [
+                {"Block": {"Id": bid, "State": "default"}, "Face": "Up", "StaticFace": False}]}],
+            "Cooldown": {"Id": "BlockInteraction", "Cooldown": 0.3, "ClickBypass": True},
+            "Settings": {"Creative": {"AllowSkipChainOnClick": True}},
+        }},
+        "Recipe": recipe,
         "BlockType": {
             "Material": "Solid",
-            "DrawType": "Cube",
-            "Group": "Cloth",
+            "DrawType": "Model",
+            "CustomModel": "Blocks/Structures/Base_Shapes/HalfBlock.blockymodel",
+            "CustomModelTexture": [{"Texture": texture, "Weight": 1}],
+            "Group": kind["group"],
+            "HitboxType": "Block_Half",
             "Flags": {},
-            "Gathering": {"Breaking": {"GatherType": "SoftBlocks", "ItemId": bid}},
-            "BlockParticleSetId": "Dust",
-            "Textures": [{"All": "BlockTextures/MoreDyes_Wool.png", "Weight": 1}],
+            "Gathering": {"Breaking": {"GatherType": kind["gather"]}},
+            "VariantRotation": "DoublePipe",
+            "BlockParticleSetId": kind["particles"],
+            "Supporting": {"Down": [{}]},
+            "ParticleColor": "#" + color,
+            "BlockSoundSetId": kind["sound"],
+            "State": {"Definitions": {"Block": {
+                "Material": "Solid",
+                "DrawType": "Cube",
+                "HitboxType": "Full",
+                "Textures": [{"All": texture, "Weight": 1}],
+                "Supporting": {"BlockSides": [{}]},
+            }}},
+        },
+        "Tags": {"Type": [kind["tag"]]},
+        "ItemSoundSetId": kind["item_sound"],
+    }
+
+
+def stairs(bid, color, recipe):
+    """Vanilla stone brick stairs with a light texture and Tint (needs an in-game check)."""
+    return {
+        "TranslationProperties": name_of(bid),
+        "Parent": "Rock_Stone_Brick_Stairs",
+        "Icon": icon_of(bid),
+        "Recipe": recipe,
+        "BlockType": {
+            "CustomModelTexture": [{"Texture": STAIRS_TEXTURE, "Weight": 1}],
             "Tint": ["#" + color],
-            "BlockSoundSetId": "Cloth",
+            "Gathering": {"Breaking": {"GatherType": "Rocks", "ItemId": bid}},
             "ParticleColor": "#" + color,
         },
-        "Tags": {"Type": ["Cloth"]},
-        "ItemSoundSetId": "ISS_Items_Cloth",
     }
+
+
+def wall(bid, color, recipe):
+    """Vanilla brick wall with the marble wall texture and Tint (needs an in-game check)."""
+    corner = "*" + bid + "_State_Definitions_Corner"
+    return {
+        "TranslationProperties": name_of(bid),
+        "Parent": "Rock_Stone_Brick_Wall",
+        "Icon": icon_of(bid),
+        "Recipe": recipe,
+        "BlockType": {
+            "CustomModelTexture": [{"Texture": WALL_TEXTURE, "Weight": 1}],
+            "Tint": ["#" + color],
+            "Gathering": {"Breaking": {"GatherType": "Rocks", "ItemId": bid}},
+            "ParticleColor": "#" + color,
+            "State": {"Definitions": {"Corner": {
+                "CustomModelTexture": [{"Texture": WALL_TEXTURE, "Weight": 1}],
+                "CustomModel": "Blocks/Structures/Walls/Wall_Rock_Brick_Corner.blockymodel",
+                "HitboxType": "Fence_Corner",
+                "Gathering": {"Breaking": {"ItemId": bid, "GatherType": "Rocks"}},
+            }}},
+            "ConnectedBlockRuleSet": {
+                "Type": "CustomTemplate",
+                "TemplateShapeAssetId": "WallConnectedBlockTemplate",
+                "TemplateShapeBlockPatterns": {"Straight": bid, "Corner": corner},
+            },
+        },
+    }
+
+
+def dye(bid, color, recipe):
+    """Dyes are petals in Hytale, so ours are colored petals mixed at the furniture bench."""
+    return {
+        "TranslationProperties": name_of(bid),
+        "Parent": "Plant_Petals_White",
+        "Icon": icon_of(bid),
+        "Recipe": recipe,
+        "BlockType": {
+            "CustomModelTexture": [{"Texture": PETAL_TEXTURE, "Weight": 1}],
+            "Tint": ["#" + color],
+            "ParticleColor": "#" + color,
+        },
+        "Tags": {"Type": ["Plant"], "Family": ["Petals", "MoreDyes_Dye"]},
+    }
+
+
+def dye_recipe(color):
+    """The More Dyes mixing recipe, with each Minecraft dye swapped for Hytale petals."""
+    counts = {}
+    for mc_dye in DYE_RECIPES[color]:
+        for petal in PETALS[mc_dye]:
+            counts[petal] = counts.get(petal, 0) + 1
+    inputs = [{"ItemId": "Plant_Petals_" + p, "Quantity": n} for p, n in sorted(counts.items())]
+    return {"Input": inputs, "OutputQuantity": sum(counts.values()), "BenchRequirement": TEXTILES}
+
+
+def dyeing(vanilla, dye_id, bench):
+    """Eight vanilla blocks and one dye make eight dyed blocks, as in Minecraft."""
+    return {
+        "Input": [{"ItemId": vanilla, "Quantity": 8}, {"ItemId": dye_id, "Quantity": 1}],
+        "OutputQuantity": 8,
+        "BenchRequirement": bench,
+    }
+
+
+def from_block(source, category, count=1):
+    """A Builder's bench recipe that reshapes one dyed block."""
+    return {"Input": [{"ItemId": source, "Quantity": 1}], "OutputQuantity": count,
+            "BenchRequirement": builders(category)}
+
+
+ROCK = {"group": "Stone", "gather": "Rocks", "particles": "Stone", "sound": "Stone",
+        "category": "Blocks.Rocks", "tag": "Rock", "item_sound": "ISS_Blocks_Stone",
+        "block": {"BlockBreakingDecalId": "Breaking_Decals_Rock"}}
+SOIL = {"group": "Sand", "gather": "Soils", "particles": "Sand", "sound": "Sand",
+        "category": "Blocks.Soils", "tag": "Soil", "item_sound": "ISS_Blocks_Gravel",
+        "block": {"Support": {"Down": [{"FaceType": "Full"}]}}}
+WOOD = {"group": "Wood", "gather": "Woods", "particles": "Wood", "sound": "Wood",
+        "category": "Blocks.Rocks", "tag": "Wood", "item_sound": "ISS_Blocks_Wood"}
+CLOTH = {"group": "Cloth", "gather": "SoftBlocks", "particles": "Dust", "sound": "Cloth",
+         "category": "Blocks.Rocks", "tag": "Cloth", "item_sound": "ISS_Items_Cloth"}
+GLASSY = {"group": "Stone", "gather": "Rocks", "particles": "Crystal", "sound": "Crystal",
+          "category": "Blocks.Rocks", "tag": "Rock", "item_sound": "ISS_Blocks_Stone"}
+
+
+def kinds():
+    """Every tinted block kind: id prefix, display name, texture, vanilla source, recipes."""
+    def k(base, **fields):
+        out = dict(base)
+        out.update(fields)
+        return out
+    return [
+        k(ROCK, prefix="Stone", name="Stone", tex=stone_texture(), vanilla="Rock_Stone", half=True),
+        k(ROCK, prefix="Cobble", name="Cobblestone", tex=cobble_texture(), vanilla="Rock_Stone_Cobble", half=True),
+        k(ROCK, prefix="Stone_Brick", name="Stone Bricks", tex=brick_texture(), vanilla="Rock_Stone_Brick",
+          shaped_from=("Stone", "Bricks"), half=True, stairs=True, wall=True),
+        k(ROCK, prefix="Stone_Smooth", name="Smooth Stone", tex=smooth_texture(),
+          vanilla="Rock_Stone_Brick_Smooth", shaped_from=("Stone", "Smooth"), half=True),
+        k(ROCK, prefix="Marble", name="Marble", tex=marble_texture(), vanilla="Rock_Marble", half=True),
+        k(ROCK, prefix="Sandstone", name="Sandstone", tex=sandstone_texture(), vanilla="Rock_Sandstone", half=True),
+        k(ROCK, prefix="Granite", name="Speckled Granite", tex=base_texture("speckled_granite.png"),
+          shaped_from=("Stone", "Decorative"), half=True),
+        k(ROCK, prefix="Granite_Smooth", name="Smooth Speckled Granite",
+          tex=base_texture("smooth_speckled_granite.png"), shaped_from=("Granite", "Smooth"), half=True),
+        k(SOIL, prefix="Sand", name="Sand", tex=sand_texture(), vanilla="Soil_Sand"),
+        k(SOIL, prefix="Gravel", name="Gravel", tex=gravel_texture(), vanilla="Soil_Gravel",
+          item_sound="ISS_Blocks_Gravel", sound="Gravel", particles="Gravel", group="Gravel"),
+        k(ROCK, prefix="Clay", name="Smooth Clay", tex=clay_texture(), vanilla="Soil_Clay_Smooth_White",
+          category="Blocks.Soils", half=True),
+        k(GLASSY, prefix="Crystal", name="Glowing Crystal", tex=crystal_texture(),
+          vanilla="Rock_Crystal_White_Block", light=None,
+          block={"Opacity": "Transparent", "CubeShadingMode": "Reflective"}),
+        k(ROCK, prefix="Lamp", name="Lamp", tex=lamp_texture(True), off=lamp_texture(False),
+          light="BlockTextures/MoreDyes_Lamp_Off.png", lamp_recipe=True, category="Blocks.Deco"),
+        k(ROCK, prefix="Lamp_Solid", name="Solid Lamp", tex=solid_lamp_texture(True),
+          off=solid_lamp_texture(False), light="BlockTextures/MoreDyes_Lamp_Solid_Off.png",
+          shaped_from=("Lamp", "Furniture_Lighting"), category="Blocks.Deco"),
+        k(WOOD, prefix="Planks", name="Planks", tex=planks_texture(), vanilla="Wood_Softwood_Planks",
+          shaped_from=("Log", "WoodPlanks"), half=True,
+          parent="Wood_Softwood_Planks"),
+        k(CLOTH, prefix="Wool", name="Wool", tex=wool_texture(), vanilla="Cloth_Block_Wool_White",
+          bench=TEXTILES, half=True),
+    ]
 
 
 def main():
@@ -266,37 +652,90 @@ def main():
     if PACK.exists():
         shutil.rmtree(PACK)
     textures = PACK / "Common" / "BlockTextures"
+    colored = textures / "MoreDyes"
     icons = PACK / "Common" / "Icons" / "ItemsGenerated"
     items = PACK / "Server" / "Item" / "Items"
     lang = PACK / "Server" / "Languages" / "en-US"
-    for d in (textures, icons, items, lang):
+    for d in (textures, colored, icons, items, lang):
         d.mkdir(parents=True)
     (PACK / "manifest.json").write_text(json.dumps(MANIFEST, indent=2) + "\n")
 
-    stone_tex, planks_tex = stone_texture(), planks_texture()
-    log_tex, wool_tex = log_top_texture(), wool_texture()
-    bark = bark_preview_texture()
-    for name, tex in (("Stone", stone_tex), ("Planks", planks_tex),
-                      ("Log_Top", log_tex), ("Wool", wool_tex)):
-        tex.save(textures / ("MoreDyes_" + name + ".png"))
-
-    # (id prefix, display name, definition, icon top, icon side, side tinted?)
-    kinds = [
-        ("Stone", "Stone", stone, stone_tex, stone_tex, True),
-        ("Log", "Log", log, log_tex, bark, False),
-        ("Planks", "Planks", planks, planks_tex, planks_tex, True),
-        ("Wool", "Wool", wool, wool_tex, wool_tex, True),
-    ]
     lines = []
-    for prefix, name, define, top, side, side_tinted in kinds:
+
+    def write(bid, item, icon, display):
+        (items / (bid + ".json")).write_text(json.dumps(item, indent=2) + "\n")
+        icon.save(icons / (bid + ".png"))
+        lines.append(bid + ".name = " + display)
+
+    for color in colors:
+        bid = "MoreDyes_Dye_" + color.upper()
+        write(bid, dye(bid, color, dye_recipe(color)), dye_icon(color), color.upper() + " Dye")
+
+    for kind in kinds():
+        prefix = kind["prefix"]
+        kind["texture_path"] = "BlockTextures/MoreDyes_" + prefix + ".png"
+        kind["tex"].save(PACK / "Common" / kind["texture_path"])
+        if "off" in kind:
+            kind["off"].save(PACK / "Common" / kind["light"])
         for color in colors:
-            bid = "MoreDyes_" + prefix + "_" + color.upper()
-            (items / (bid + ".json")).write_text(json.dumps(define(bid, color), indent=2) + "\n")
-            icon_side = tinted(side, color) if side_tinted else side
-            cube_icon(tinted(top, color), icon_side).save(icons / (bid + ".png"))
-            lines.append(bid + ".name = " + color.upper() + " " + name)
+            hexid = color.upper()
+            bid = "MoreDyes_" + prefix + "_" + hexid
+            dye_id = "MoreDyes_Dye_" + hexid
+            if "shaped_from" in kind:
+                source, category = kind["shaped_from"]
+                source_id = "MoreDyes_" + source + "_" + hexid
+                if category.startswith("Furniture_"):
+                    recipe = {"Input": [{"ItemId": source_id, "Quantity": 1}], "OutputQuantity": 1,
+                              "BenchRequirement": LIGHTING}
+                else:
+                    recipe = from_block(source_id, category)
+            elif kind.get("lamp_recipe"):
+                recipe = {"Input": [{"ItemId": dye_id, "Quantity": 1},
+                                    {"ItemId": "Furniture_Crude_Candle", "Quantity": 1},
+                                    {"ItemId": "Ingredient_Bar_Iron", "Quantity": 1}],
+                          "OutputQuantity": 1, "BenchRequirement": LIGHTING}
+            else:
+                recipe = dyeing(kind["vanilla"], dye_id, kind.get("bench", WORKBENCH))
+            item = cube(bid, color, kind, recipe)
+            if prefix == "Planks":
+                # Keep the vanilla planks' behaviour, and also allow dyeing vanilla planks.
+                item = {"TranslationProperties": name_of(bid), "Parent": kind["parent"], "Icon": icon_of(bid),
+                        "Recipe": recipe, "BlockType": {
+                            "Textures": [{"All": kind["texture_path"], "Weight": 1}],
+                            "Tint": ["#" + color],
+                            "Gathering": {"Breaking": {"GatherType": "Woods", "ItemId": bid}},
+                            "ParticleColor": "#" + color}}
+            write(bid, item, shape_icon("cube", tinted(kind["tex"], color), tinted(kind["tex"], color)),
+                  hexid + " " + kind["name"])
+            if kind.get("half"):
+                tex_path = "BlockTextures/MoreDyes/" + prefix + "_" + hexid + ".png"
+                colored_tex = tinted(kind["tex"], color)
+                colored_tex.save(PACK / "Common" / tex_path)
+                hid = "MoreDyes_" + prefix + "_Half_" + hexid
+                write(hid, half(hid, color, kind, tex_path, from_block(bid, "HalfSlab", 2)),
+                      shape_icon("half", colored_tex, colored_tex), hexid + " " + kind["name"] + " Slab")
+            if kind.get("stairs"):
+                sid = "MoreDyes_" + prefix + "_Stairs_" + hexid
+                colored_tex = tinted(kind["tex"], color)
+                write(sid, stairs(sid, color, from_block(bid, "Stairs")),
+                      shape_icon("stairs", colored_tex, colored_tex), hexid + " " + kind["name"] + " Stairs")
+            if kind.get("wall"):
+                wid = "MoreDyes_" + prefix + "_Wall_" + hexid
+                colored_tex = tinted(kind["tex"], color)
+                write(wid, wall(wid, color, from_block(bid, "Wall", 2)),
+                      shape_icon("wall", colored_tex, colored_tex), hexid + " " + kind["name"] + " Wall")
+
+    # Logs keep vanilla bark on the sides, so they are not in kinds().
+    log_tex, bark = log_top_texture(), bark_preview_texture()
+    log_tex.save(textures / "MoreDyes_Log_Top.png")
+    for color in colors:
+        bid = "MoreDyes_Log_" + color.upper()
+        recipe = dyeing("Wood_Oak_Trunk", "MoreDyes_Dye_" + color.upper(), WORKBENCH)
+        write(bid, log(bid, color, recipe), shape_icon("cube", tinted(log_tex, color), bark),
+              color.upper() + " Log")
+
     (lang / "server.lang").write_text("\n".join(lines) + "\n")
-    print("Wrote %d blocks to %s" % (len(lines), PACK.relative_to(ROOT)))
+    print("Wrote %d items to %s" % (len(lines), PACK.relative_to(ROOT)))
 
 
 if __name__ == "__main__":
