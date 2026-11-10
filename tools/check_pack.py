@@ -16,8 +16,21 @@ ROOT = Path(__file__).resolve().parent.parent
 PACK = ROOT / "pack" / "MoreDyes"
 
 # Vanilla assets the pack refers to. Add to these when using new ones.
-VANILLA_ITEMS = {"Wood_Oak_Trunk", "Wood_Softwood_Planks"}
-VANILLA_TEXTURES = {"BlockTextures/Wood_Trunk_Oak_Side.png"}
+VANILLA_ITEMS = {
+    "Wood_Oak_Trunk", "Wood_Softwood_Planks", "Rock_Stone", "Rock_Stone_Cobble", "Rock_Stone_Brick",
+    "Rock_Stone_Brick_Smooth", "Rock_Marble", "Rock_Sandstone", "Soil_Sand", "Soil_Gravel",
+    "Soil_Clay_Smooth_White", "Rock_Crystal_White_Block", "Cloth_Block_Wool_White",
+    "Furniture_Crude_Candle", "Ingredient_Bar_Iron", "Plant_Petals_White", "Rock_Stone_Brick_Stairs",
+    "Rock_Stone_Brick_Wall",
+    "Storage_Drawer_Softwood",  # Wan's Storage Drawers, only in --drawers builds
+} | {"Plant_Petals_" + c for c in (
+    "Azure", "Black", "Blood", "Blue", "Cyan", "Green", "Orange", "Pink", "Purple", "Red", "Storm", "Yellow")}
+VANILLA_TEXTURES = {
+    "BlockTextures/Wood_Trunk_Oak_Side.png",
+    "Blocks/Structures/Stairs/Stairs_Textures/Rock_Chalk_Brick_Stairs.png",
+    "Blocks/Structures/Walls/Wall_Rock_Brick_Marble.png",
+    "Resources/Plants/Petal_Textures/White.png",
+}
 
 errors = []
 
@@ -27,10 +40,18 @@ def error(msg):
 
 
 def textures_of(block_type):
-    for entry in block_type.get("Textures", []):
-        for key, value in entry.items():
-            if key != "Weight":
-                yield value
+    """Every texture a block type or any of its states draws."""
+    states = [block_type] + list(block_type.get("State", {}).get("Definitions", {}).values())
+    for state in states:
+        for entry in (state.get("Textures") or []) + (state.get("CustomModelTexture") or []):
+            for key, value in entry.items():
+                if key != "Weight":
+                    yield value
+
+
+def recipes_of(item):
+    recipe = item.get("Recipe", [])
+    return recipe if isinstance(recipe, list) else [recipe]
 
 
 def main():
@@ -71,10 +92,20 @@ def main():
         drop = block.get("Gathering", {}).get("Breaking", {}).get("ItemId")
         if drop and drop not in ids | VANILLA_ITEMS:
             error("%s: drops unknown item %s" % (f.name, drop))
-        for ingredient in item.get("Recipe", {}).get("Input", []):
-            needed = ingredient.get("ItemId")
-            if needed and needed not in ids | VANILLA_ITEMS:
-                error("%s: recipe needs unknown item %s" % (f.name, needed))
+        for recipe in recipes_of(item):
+            if not recipe.get("BenchRequirement"):
+                error("%s: recipe has no bench" % f.name)
+            for ingredient in recipe.get("Input", []):
+                needed = ingredient.get("ItemId")
+                if needed and needed not in ids | VANILLA_ITEMS:
+                    error("%s: recipe needs unknown item %s" % (f.name, needed))
+        light = block.get("Light")
+        if light and not (isinstance(light.get("Color"), str) and len(light["Color"]) == 4):
+            error("%s: light color should be #RGB like vanilla, got %s" % (f.name, light.get("Color")))
+        patterns = block.get("ConnectedBlockRuleSet", {}).get("TemplateShapeBlockPatterns", {})
+        for target in patterns.values():
+            if target.lstrip("*").split("_State_")[0] not in ids:
+                error("%s: connects to unknown block %s" % (f.name, target))
 
     for e in errors:
         print("error:", e)
