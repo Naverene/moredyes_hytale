@@ -627,7 +627,7 @@ def kinds():
           tex=base_texture("smooth_speckled_granite.png"), shaped_from=("Granite", "Smooth"), half=True),
         k(SOIL, prefix="Sand", name="Sand", tex=sand_texture(), vanilla="Soil_Sand"),
         k(SOIL, prefix="Gravel", name="Gravel", tex=gravel_texture(), vanilla="Soil_Gravel",
-          item_sound="ISS_Blocks_Gravel", sound="Gravel", particles="Gravel", group="Gravel"),
+          item_sound="ISS_Blocks_Gravel", sound="Gravel", particles="Dirt", group="Gravel"),
         k(ROCK, prefix="Clay", name="Smooth Clay", tex=clay_texture(), vanilla="Soil_Clay_Smooth_White",
           category="Blocks.Soils", half=True),
         k(GLASSY, prefix="Crystal", name="Glowing Crystal", tex=crystal_texture(),
